@@ -1,28 +1,36 @@
-use std::io::{self, prelude::*};
+use std::{
+    io::{self, prelude::*},
+    ops::Add,
+};
 
-/// Describes a type that can be encoded and decoded as bytes.
-pub trait Data: Sized {
+/// Describes a type that can be encoded bytes.
+pub trait Encode {
     /// Encode into a writer.
     fn encode<W: Write>(&self, writer: &mut W) -> io::Result<()>;
 
-    /// Decode from a reader.
-    fn decode<R: Read>(reader: &mut R) -> io::Result<Self>;
-
+    /// The length of this instance, in bytes.
     fn bytes_len(&self) -> usize;
 }
 
-impl Data for u8 {
-    fn encode<W: Write>(&self, writer: &mut W) -> io::Result<()> {
-        writer.write_all(&mut [*self])
-    }
+/// Describes a type that can be decoded from bytes.
+pub trait Decode: Sized {
+    /// Decode from a reader.
+    fn decode<R: Read>(reader: R) -> io::Result<Self>;
+}
 
-    fn decode<R: Read>(reader: &mut R) -> io::Result<Self> {
-        let mut value = [0; 1];
-        reader.read_exact(&mut value)?;
-        Ok(value[0])
-    }
+pub trait Data: Encode + Decode {
+    type Identifier: Encode + Decode;
+}
 
-    fn bytes_len(&self) -> usize {
-        1
-    }
+pub trait RangedSeek: Ord {
+    fn min() -> Self;
+    fn max() -> Self;
+}
+
+pub struct RangeTable<T>
+where
+    T: RangedSeek + Add,
+{
+    separation: T,
+    chunks: usize,
 }
